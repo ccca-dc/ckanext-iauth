@@ -50,11 +50,10 @@ class PackageContributeOverride(p.SingletonPlugin, PackageController):
         try:
             rsc = get_action('resource_show')(context, {'id': resource_id})
             get_action('package_show')(context, {'id': id})
-            print rsc['anonDownload']
         except (NotFound, NotAuthorized):
             abort(404, _('Resource not found'))
 
-        if authz.auth_is_anon_user(context) and rsc['anonDownload'] == 'false':
+        if authz.auth_is_anon_user(context) and rsc.pop('anonDownload', 'false') == 'false':
             abort(401, _('Unauthorized to read resource %s') % id)
         else:
             if rsc.get('url_type') == 'upload':
