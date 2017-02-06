@@ -19,7 +19,7 @@ import ckan.authz as authz
 
 
 from urlparse import urlparse
-from posixpath import basename, dirname
+import os
 
 render = base.render
 abort = base.abort
@@ -60,17 +60,14 @@ class PackageContributeOverride(p.SingletonPlugin, PackageController):
                 upload = uploader.ResourceUpload(rsc)
                 filepath = upload.get_path(rsc['id'])
                 fileapp = paste.fileapp.FileApp(filepath)
-                try:
-                    status, headers, app_iter = request.call_application(fileapp)
-                except OSError:
-                    abort(404, _('Resource data not found'))
-                response.headers.update(dict(headers))
+                log.debug(fileapp)
+                response.headers['X-Accel-Redirect'] = "/files/{0}".format(os.path.relpath(filepath,start='/e/ckan/resources/'))
+                response.headers["Content-Disposition"] = "attachment; filename={0}".format(rsc.get('url','').split('/')[-1])
                 content_type, content_enc = mimetypes.guess_type(
                     rsc.get('url', ''))
                 if content_type:
                     response.headers['Content-Type'] = content_type
-                response.status = status
-                return app_iter
+                return response
             elif not 'url' in rsc:
                 abort(404, _('No download is available'))
             redirect(rsc['url'])
