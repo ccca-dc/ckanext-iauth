@@ -42,7 +42,7 @@ def package_update(context, data_dict):
                         'msg': 'Dataset cannot be set public as it contains a subset, which was already published'}
 
     # Editor_mod
-    if config['ckanext.iauth.editor_modified']:
+    if 'ckanext.iauth.editor_modified' in config:
         #print "Hello Moonlight"
         editor_mod = config.get('ckanext.iauth.editor_modified')
     else:
