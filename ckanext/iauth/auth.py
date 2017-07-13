@@ -58,7 +58,8 @@ def package_update(context, data_dict):
 
             user_info = context.get('auth_user_obj')
 
-            #check if we are Admin
+            #check if we are an Organisation Admin - sysadmins do not come into this function at all!!
+            owner_org = package.owner_org
             local_access = False
             org_list = toolkit.get_action('organization_list_for_user')({}, {"id": user_info.id, "permission": "member_create"})
 
