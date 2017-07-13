@@ -13,15 +13,9 @@ from pylons import config
 
 from ckanext.iauth.action import check_loaded_plugin
 
-#For editor_mod
-last_session = ""
-last_access = False
-
 
 @logic.auth_allow_anonymous_access
 def package_update(context, data_dict):
-
-    #print "***************** Anja package_update iauth"
 
     package = logic_auth.get_package_object(context, data_dict)
 
@@ -44,68 +38,11 @@ def package_update(context, data_dict):
     # Editor_mod
     editor_restricted = False
     if 'ckanext.iauth.editor_modified' in config:
-        #print "Hello Moonlight"
         editor_mod = config.get('ckanext.iauth.editor_modified')
         if editor_mod == 'true' or editor_mod == 'True':
            editor_restricted = True
 
-
-    user_info = context['auth_user_obj'] ## Check if logged in :-)
-
-    #print user_info
-
-    if editor_restricted and user_info:
-        #print "Hallo 1"
-        global last_session
-        global last_access
-
-        s = context['session'] # always exists
-
-        try:
-            my_package = context['package'] # not on resources or page reload
-            owner_org =  my_package.owner_org
-            #print owner_org
-        except: # per resource: session; and on page reload: only session
-            if s == last_session:
-                if last_access:
-                    return {'success': True}
-                else:
-                    return {'success': False, 'msg': 'You are only allowed to edit your own datasets'}
-            else:
-                #print "internal problem"
-                return {'success': False, 'msg': 'Access denied'} # We should not run into this path :-)
-
-
-        # SAVE session - for the follwing resources that pass through this function and for page relaods
-        last_session = context['session']
-        #print last_session
-
-        #check if ADMIN
-        user_info = context['auth_user_obj']
-        #print context
-
-        org_list = toolkit.get_action('organization_list_for_user')({}, {"id": user_info.id, "permission": "member_create"})
-        #print "Hello2"
-        #print org_list
-        for x in org_list:
-            #print x.values()
-            if owner_org in x.values():
-                    #print "success"
-                    #print last_session
-                    last_access = True
-                    return {'success': True}
-
-        # Editors only allowed to edit own packages
-        if user_info.id == my_package.creator_user_id or user_info.email == my_package.maintainer_email or user_info.email == my_package.author_email:
-            last_access = True
-            return {'success': True}
-        else:
-            last_access = False
-            return {'success': False, 'msg': 'You are only allowed to edit your own datasets'}
-
-    #print "Hallo 2"
-
-    # From Core CKAN
+    # From Core CKAN ---- # Modified for Restricted Editor - editor_mod
     user = context.get('user')
     package = logic_auth.get_package_object(context, data_dict)
 
@@ -115,6 +52,34 @@ def package_update(context, data_dict):
         check1 = authz.has_user_permission_for_group_or_org(
             package.owner_org, user, 'update_dataset'
         )
+        ########################################################################
+        #### Modification for restricted editor: editor_mod flag - Anja 13.7.17
+        if check1 and editor_restricted:
+
+            user_info = context.get('auth_user_obj')
+
+            #check if we are Admin
+            local_access = False
+            org_list = toolkit.get_action('organization_list_for_user')({}, {"id": user_info.id, "permission": "member_create"})
+
+            for x in org_list:
+                #print x.values()
+                if owner_org in x.values():
+                        #print "success"
+                        #print last_session
+                        local_access = True
+
+            if not local_access:   # We are Editor: restrict access
+
+                # Editors only allowed to edit own packages
+                if user_info.id == package.creator_user_id or user_info.email == package.maintainer_email or user_info.email == package.author_email:
+                    check1 = True
+                else:
+                    check1 = False
+        #### Modification for restricted editor: editor_mod flag - Anja 13.7.17 END
+        ###########################################################################
+
+
     else:
         # If dataset is not owned then we can edit if config permissions allow
         if authz.auth_is_anon_user(context):
