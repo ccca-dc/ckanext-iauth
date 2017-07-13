@@ -49,7 +49,12 @@ def package_update(context, data_dict):
         if editor_mod == 'true' or editor_mod == 'True':
            editor_restricted = True
 
-    if editor_restricted:
+
+    user_info = context['auth_user_obj'] ## Check if logged in :-)
+
+    #print user_info
+
+    if editor_restricted and user_info:
         #print "Hallo 1"
         global last_session
         global last_access
@@ -77,6 +82,8 @@ def package_update(context, data_dict):
 
         #check if ADMIN
         user_info = context['auth_user_obj']
+        #print context
+
         org_list = toolkit.get_action('organization_list_for_user')({}, {"id": user_info.id, "permission": "member_create"})
         #print "Hello2"
         #print org_list
