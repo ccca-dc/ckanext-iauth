@@ -42,14 +42,15 @@ def package_update(context, data_dict):
                         'msg': 'Dataset cannot be set public as it contains a subset, which was already published'}
 
     # Editor_mod
+    editor_restricted = False
     if 'ckanext.iauth.editor_modified' in config:
         #print "Hello Moonlight"
         editor_mod = config.get('ckanext.iauth.editor_modified')
-    else:
-        editor_mod = False
+        if editor_mod == 'true' or editor_mod == 'True':
+           editor_restricted = True
 
-    if editor_mod:
-
+    if editor_restricted:
+        #print "Hallo 1"
         global last_session
         global last_access
 
@@ -94,6 +95,8 @@ def package_update(context, data_dict):
         else:
             last_access = False
             return {'success': False, 'msg': 'You are only allowed to edit your own datasets'}
+
+    #print "Hallo 2"
 
     # From Core CKAN
     user = context.get('user')
