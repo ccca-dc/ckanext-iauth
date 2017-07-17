@@ -212,3 +212,12 @@ def resource_delete(context, data_dict):
     else:
         return {'success': True}
     # From CORE End
+
+def user_list(context, data_dict):
+    # Users list is visible by default
+
+    # This code was copied from CKAN
+    # Surprisingly it is now no longer possible to list the user
+    # without apikey or logged in
+    
+    return {'success': True}
