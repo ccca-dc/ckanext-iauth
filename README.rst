@@ -32,9 +32,18 @@
 ckanext-iauth
 =============
 
-.. Put a description of your extension here:
-   What does it do? What features does it have?
-   Consider including some screenshots or embedding a video!
+.. Represents a collection of all authorization functions
+   required by various CCCA-plugins
+
+   Also modifies the rights if the EDITOR role:
+   Only modifiy and delete your own dataset
+
+   Parameter in Development/Production.ini:
+
+   ckanext.iauth.editor_modified = true
+
+
+
 
 
 ------------
@@ -76,11 +85,16 @@ To install ckanext-iauth:
 Config Settings
 ---------------
 
-Document any optional config settings here. For example::
+Represents a collection of all authorization functions
+   required by various CCCA-plugins
 
-    # The minimum number of hours to wait before re-checking a resource
-    # (optional, default: 24).
-    ckanext.iauth.some_setting = some_default_value
+   Also modifies the rights if the EDITOR role:
+   Only modifiy and delete your own dataset
+
+   Parameter in Development/Production.ini:
+
+   ckanext.iauth.editor_modified = true
+
 
 
 ------------------------
