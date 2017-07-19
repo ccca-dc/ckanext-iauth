@@ -217,7 +217,7 @@ def user_list(context, data_dict):
     # Users list is visible by default
 
     # This code was copied from CKAN
-    # Surprisingly it is now no longer possible to list the user
+    # Anja: Surprisingly it is now (just by copy!) no longer possible to list the user
     # without apikey or logged in
-    
+
     return {'success': True}
