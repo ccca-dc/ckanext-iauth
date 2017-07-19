@@ -40,8 +40,15 @@ def package_show(context, data_dict):
             package.owner_org, user, 'read')
 
         ####################### Modification ###########################
-        # Everybody is only allowed to see his own private packages except when they share one groups
+        # Everybody normal (Editor) user is only allowed to see his own private packages except when they share one groups
 
+        # check Admin
+        authorized_admin = authz.has_user_permission_for_group_or_org(package.owner_org, user, 'member_create')
+
+        if  authorized_admin:
+            return {'success': True}
+
+        # Editor remains; check if we try to edit our own dataset    
         user_info = context.get('auth_user_obj')
 
         if authorized:  # check if we need to restrict access
