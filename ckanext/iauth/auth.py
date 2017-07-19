@@ -13,8 +13,7 @@ from pylons import config
 
 from ckanext.iauth.action import check_loaded_plugin
 
-from ckan.logic.auth import (get_package_object, get_group_object,
-                            get_resource_object, get_related_object)
+from ckan.logic.auth import (get_package_object, get_resource_object)
 
 
 def package_show(context, data_dict):
@@ -48,7 +47,7 @@ def package_show(context, data_dict):
         if  authorized_admin:
             return {'success': True}
 
-        # Editor remains; check if we try to edit our own dataset    
+        # Editor remains; check if we try to edit our own dataset
         user_info = context.get('auth_user_obj')
 
         if authorized:  # check if we need to restrict access
