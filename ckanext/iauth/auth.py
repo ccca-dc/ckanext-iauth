@@ -13,6 +13,51 @@ from pylons import config
 
 from ckanext.iauth.action import check_loaded_plugin
 
+from ckan.logic.auth import (get_package_object, get_group_object,
+                            get_resource_object, get_related_object)
+
+
+def package_show(context, data_dict):
+
+    #########################################################
+    # From Core CKAN ----
+
+    user = context.get('user')
+    package = get_package_object(context, data_dict)
+    # draft state indicates package is still in the creation process
+    # so we need to check we have creation rights.
+    if package.state.startswith('draft'):
+        auth = authz.is_authorized('package_update',
+                                       context, data_dict)
+        authorized = auth.get('success')
+    elif package.owner_org is None and package.state == 'active':
+        return {'success': True}
+    else:
+        # anyone can see a public package
+        if not package.private and package.state == 'active':
+            return {'success': True}
+        authorized = authz.has_user_permission_for_group_or_org(
+            package.owner_org, user, 'read')
+
+        ####################### Modification ###########################
+        # Everybody is only allowed to see his own private packages except when they share one groups
+
+        user_info = context.get('auth_user_obj')
+
+        if authorized:  # check if we need to restrict access
+            if user_info.id != package.creator_user_id and  user_info.email != package.maintainer_email and user_info.email != package.author_email:
+                authorized = False
+
+        ####################### Modification END ###########################
+
+    if not authorized:
+        return {'success': False, 'msg': _('User %s not authorized to read package %s') % (user, package.id)}
+    else:
+        return {'success': True}
+
+    # From Core CKAN ----  END
+    ###############################################################
+
 
 @logic.auth_allow_anonymous_access
 def package_update(context, data_dict):
