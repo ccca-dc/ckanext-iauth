@@ -15,7 +15,7 @@ from ckanext.iauth.action import check_loaded_plugin
 
 from ckan.logic.auth import (get_package_object, get_resource_object)
 
-
+@logic.auth_allow_anonymous_access
 def package_show(context, data_dict):
 
     #########################################################
@@ -50,6 +50,10 @@ def package_show(context, data_dict):
         # Editor remains; check if we try to edit our own dataset
         user_info = context.get('auth_user_obj')
 
+        if user_info == None:  # Anon User
+            authorized = False
+
+        #Editors and Members left
         if authorized:  # check if we need to restrict access
             if user_info.id != package.creator_user_id and  user_info.email != package.maintainer_email and user_info.email != package.author_email:
                 authorized = False
@@ -65,7 +69,7 @@ def package_show(context, data_dict):
     ###############################################################
 
 
-@logic.auth_allow_anonymous_access
+#@logic.auth_allow_anonymous_access
 def package_update(context, data_dict):
 
     package = logic_auth.get_package_object(context, data_dict)
@@ -161,7 +165,7 @@ def package_update(context, data_dict):
     # From Core CKAN END
 
 
-
+#@logic.auth_allow_anonymous_access
 def resource_update(context, data_dict):
 
     resource = logic_auth.get_resource_object(context, data_dict)
@@ -206,6 +210,7 @@ def resource_update(context, data_dict):
         return {'success': True}
     # From Core END
 
+#@logic.auth_allow_anonymous_access
 def package_delete(context, data_dict):
 
     package = toolkit.get_action('package_show')(data_dict={'id': data_dict['id']})
@@ -228,6 +233,7 @@ def package_delete(context, data_dict):
 
 
 
+#@logic.auth_allow_anonymous_access
 def resource_delete(context, data_dict):
 
     # Handle
@@ -264,11 +270,28 @@ def resource_delete(context, data_dict):
         return {'success': True}
     # From CORE End
 
+#Anja, 20.7.17 If we do not add this 'decoration' Anon Access denied before even moving into this function ....
+@p.toolkit.auth_allow_anonymous_access
 def user_list(context, data_dict):
     # Users list is visible by default
 
-    # This code was copied from CKAN
-    # Anja: Surprisingly it is now (just by copy!) no longer possible to list the user
-    # without apikey or logged in
+    # ATTENTION WE NEED THIS LIST TO BE PUBLIC ... used at other places - ccca-plugin; further plugins?
+    return {'success': True}
+
+    user_info = context.get('auth_user_obj')
+
+    if not user_info:
+        return {'success': False, 'msg': _('Not authorized to see this list')}
+
+    return {'success': True}
+
+#@logic.auth_allow_anonymous_access
+#Prevent Not logged in Users to see user info
+def user_show(context, data_dict):
+
+    return {'success': True}
+
+@logic.auth_allow_anonymous_access
+def group_show(context, data_dict):
 
     return {'success': True}
