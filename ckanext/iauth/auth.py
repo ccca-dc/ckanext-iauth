@@ -271,12 +271,15 @@ def resource_delete(context, data_dict):
     # From CORE End
 
 #Anja, 20.7.17 If we do not add this 'decoration' Anon Access denied before even moving into this function ....
-#@p.toolkit.auth_allow_anonymous_access
+@p.toolkit.auth_allow_anonymous_access
 def user_list(context, data_dict):
     # Users list is visible by default
-    #print "Hi user"
+
+    # ATTENTION WE NEED THIS LIST TO BE PUBLIC ... used at other places - ccca-plugin; further plugins?
+    return {'success': True}
+
     user_info = context.get('auth_user_obj')
-    #print user_info
+
     if not user_info:
         return {'success': False, 'msg': _('Not authorized to see this list')}
 

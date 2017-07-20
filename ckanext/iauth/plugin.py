@@ -45,7 +45,7 @@ class IauthPlugin(plugins.SingletonPlugin):
             'package_delete': auth.package_delete,
             'package_update': auth.package_update,
             'resource_update': auth.resource_update,
-            'user_list': auth.user_list,
-            'user_show': auth.user_show,
-            'group_show': auth.group_show
+            'user_list': auth.user_list
+            #'user_show': auth.user_show,
+            #'group_show': auth.group_show
             }
