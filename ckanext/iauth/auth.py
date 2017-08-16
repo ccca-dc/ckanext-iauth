@@ -17,7 +17,7 @@ from ckan.logic.auth import (get_package_object, get_resource_object)
 
 @logic.auth_allow_anonymous_access
 def package_show(context, data_dict):
-
+    #print "*********** Anja package_show iauth"
     #########################################################
     # From Core CKAN ----
 
@@ -39,7 +39,7 @@ def package_show(context, data_dict):
             package.owner_org, user, 'read')
 
         ####################### Modification ###########################
-        # Everybody normal (Editor) user is only allowed to see his own private packages except when they share one groups
+        # Every normal (Editor) user is only allowed to see his own private packages except when they share one groups
 
         # check Admin
         authorized_admin = authz.has_user_permission_for_group_or_org(package.owner_org, user, 'member_create')
@@ -71,6 +71,7 @@ def package_show(context, data_dict):
 
 #@logic.auth_allow_anonymous_access
 def package_update(context, data_dict):
+    #print "*********** Anja update iauth"
 
     package = logic_auth.get_package_object(context, data_dict)
 
