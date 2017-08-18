@@ -1,0 +1,42 @@
+{#
+Displays a list of datasets.
+
+packages       - A list of packages to display.
+list_class     - The class name for the list item.
+item_class     - The class name to use on each item.
+hide_resources - If true hides the resources (default: false).
+banner         - If true displays a popular banner (default: false).
+truncate       - The length to trucate the description to (default: 180)
+truncate_title - The length to truncate the title to (default: 80).
+
+Example:
+
+  {% snippet 'snippets/package_list.html', packages=c.datasets %}
+
+#}
+{% set is_admin = h.iauth_check_admin (c, c.userobj) %}
+{% if c.userobj %}
+  {% set user_id = c.userobj.id %}
+{% else %}
+  {% set user_id = '' %}
+{% endif %}
+
+{% set is_org = h.iauth_check_controller (c) %} {#} just to make sure to relay on stadard ckan behaviour in other cases {#}
+{% block package_list %}
+  {% if packages %}
+    <ul class="{{ list_class or 'dataset-list unstyled' }}">
+    	{% block package_list_inner %}
+	      {% for package in packages %}
+          {% if not is_org or not package.private %}
+	           {% snippet 'snippets/package_item.html', package=package, item_class=item_class, hide_resources=hide_resources, banner=banner, truncate=truncate, truncate_title=truncate_title %}
+          {% else %}
+            {#} Check if owner {#}
+              {% if is_admin or package.creator_user_id == user_id %}
+                  {% snippet 'snippets/package_item.html', package=package, item_class=item_class, hide_resources=hide_resources, banner=banner, truncate=truncate, truncate_title=truncate_title %}
+              {% endif %}
+          {% endif %}
+	      {% endfor %}
+	    {% endblock %}
+    </ul>
+  {% endif %}
+{% endblock %}

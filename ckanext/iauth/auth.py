@@ -136,6 +136,12 @@ def package_show(context, data_dict):
         #Editors and Members left
         if authorized:  # check if we need to restrict access
             if user_info.id != package.creator_user_id and  user_info.email != package.maintainer_email and user_info.email != package.author_email:
+                #errors = { 'private': [u'Not authorized to to see private datasets']}
+
+                #raise Exception("TEst")
+                #raise NotAuthorized("Test")
+
+
                 authorized = False
 
     ####################### Modification END ###########################

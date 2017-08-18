@@ -24,3 +24,26 @@ def iauth_get_special_org ():
         return config.get ('ckanext.iauth.special_org')
     else:
         return ''
+
+def iauth_check_controller (context):
+
+    try:
+        if context.controller == 'organization':
+            return True
+
+    except:
+        return False
+
+    return False
+
+def iauth_check_admin(context, userobj):
+
+    if not userobj:
+        return False
+    try:
+        if context.controller == 'organization':
+            if userobj.id in context.group_admins:
+                    return True
+    except:
+       return False
+    return False

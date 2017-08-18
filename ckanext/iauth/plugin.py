@@ -40,7 +40,9 @@ class IauthPlugin(plugins.SingletonPlugin):
     # ITemplateHelpers
     def get_helpers(self):
         return {
-            'iauth_get_special_org': helpers.iauth_get_special_org
+            'iauth_get_special_org': helpers.iauth_get_special_org,
+            'iauth_check_admin': helpers.iauth_check_admin,
+            'iauth_check_controller': helpers.iauth_check_controller
             }
 
 
