@@ -21,6 +21,7 @@ class IauthPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IActions)
     plugins.implements(plugins.IAuthFunctions)
     plugins.implements(plugins.IPackageController, inherit=True)
+    plugins.implements(plugins.IOrganizationController, inherit=True)
 
 
     # IConfigurer
@@ -42,7 +43,9 @@ class IauthPlugin(plugins.SingletonPlugin):
         return {
             'iauth_get_special_org': helpers.iauth_get_special_org,
             'iauth_check_admin': helpers.iauth_check_admin,
-            'iauth_check_controller': helpers.iauth_check_controller
+            'iauth_check_controller_org': helpers.iauth_check_controller_org,
+            'iauth_check_controller_user': helpers.iauth_check_controller_user,
+            'iauth_anon_activity': helpers.iauth_anon_activity
             }
 
 
@@ -57,14 +60,15 @@ class IauthPlugin(plugins.SingletonPlugin):
     def get_auth_functions(self):
         """Implements IAuthFunctions.get_auth_functions"""
         return {
+            'organization_show': auth.organization_show,
             'package_show': auth.package_show,
             'package_delete': auth.package_delete,
             'package_update': auth.package_update,
             'resource_update': auth.resource_update,
             'resource_create': auth.resource_create,
-            'user_list': auth.user_list
-            #'user_show': auth.user_show,
-            #'group_show': auth.group_show
+            'user_list': auth.user_list,
+            'user_show': auth.user_show,
+            'group_show': auth.group_show
             }
 
     # IPackageController

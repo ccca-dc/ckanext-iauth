@@ -13,7 +13,8 @@ from pylons import config
 
 from ckanext.iauth.action import check_loaded_plugin
 
-from ckan.logic.auth import (get_package_object, get_resource_object)
+from ckan.logic.auth import (get_package_object, get_resource_object, get_group_object,get_related_object)
+
 
 ValidationError = logic.ValidationError
 NotAuthorized = toolkit.NotAuthorized
@@ -89,6 +90,45 @@ def resource_create(context, data_dict):
     ### From CKAN Core END
     #################################################################
 
+@logic.auth_allow_anonymous_access
+def organization_show(context, data_dict):
+
+    # From CKAN Core -with modifications :-) bug-fix state active !?
+    user = context.get('user')
+    group = get_group_object(context, data_dict)
+
+    # Anja
+    # Check wether somebody tries to include datasets into an org who is no admin
+    # in the first instance  api calls concerned
+    # Anja, 23.8.17 - :-) Found no better solution :-)
+    userobj = context.get('auth_user_obj')
+    if userobj:
+        if userobj.sysadmin:
+            return {'success': True}
+
+    if 'api_version' in context:
+        # New
+        return {'success': False, 'msg': _('Not authorized to read an organization.')}
+
+        # Old: just for include_datasets
+        if 'include_datasets' in data_dict:
+            if data_dict['include_datasets'] != False:
+                authorized = authz.has_user_permission_for_group_or_org(
+                    group.id, user, 'member_create')
+                if not authorized:
+                    return {'success': False, 'msg': _('User %s not authorized to read group %s WITH include_datasets') % (user, group.title)}
+
+
+    #From CKan core
+    if group.state == 'active': # Anja, 23.8.17 - not clear what this is for
+        return {'success': True}
+    authorized = authz.has_user_permission_for_group_or_org(
+            group.id, user, 'read')
+
+    if authorized:
+        return {'success': True}
+    else:
+        return {'success': False, 'msg': _('User %s not authorized to read group %s') % (user, group.id)}
 
 
 
@@ -138,8 +178,10 @@ def package_show(context, data_dict):
             if user_info.id != package.creator_user_id and  user_info.email != package.maintainer_email and user_info.email != package.author_email:
                 #errors = { 'private': [u'Not authorized to to see private datasets']}
 
+                # Leider geht das hier alles nicht :-(
                 #raise Exception("TEst")
                 #raise NotAuthorized("Test")
+                #raise ValidationError("Test")
 
 
                 authorized = False
@@ -375,6 +417,11 @@ def resource_delete(context, data_dict):
 #Anja, 20.7.17 If we do not add this 'decoration' Anon Access denied before even moving into this function ....
 @p.toolkit.auth_allow_anonymous_access
 def user_list(context, data_dict):
+
+    if 'api_version' in context:
+        # New
+        return {'success': False, 'msg': _('Not authorized to get user list.')}
+    #CKAN Core
     # Users list is visible by default
 
     # ATTENTION WE NEED THIS LIST TO BE PUBLIC ... used at other places - ccca-plugin; further plugins?
@@ -391,9 +438,17 @@ def user_list(context, data_dict):
 #Prevent Not logged in Users to see user info
 def user_show(context, data_dict):
 
+    if 'api_version' in context:
+        # New
+        return {'success': False, 'msg': _('Not authorized to read a user.')}
+
     return {'success': True}
 
 @logic.auth_allow_anonymous_access
 def group_show(context, data_dict):
+
+    if 'api_version' in context:
+        # New
+        return {'success': False, 'msg': _('Not authorized to read a group.')}
 
     return {'success': True}
