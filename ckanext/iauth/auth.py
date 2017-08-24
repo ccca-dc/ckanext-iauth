@@ -21,23 +21,23 @@ NotAuthorized = toolkit.NotAuthorized
 Invalid = toolkit.Invalid
 
 def _check_unauthorized_upload(context, data_dict, owner_org):
+    # Return True if UNAUTHORIZED and False if authorized
 
-    test_upload = data_dict.get('upload_local')
-    if not test_upload:
-        test_upload = data_dict.get('upload_remote')
+    special_org_name = ''
 
-    if test_upload != None:
-        if 'ckanext.iauth.special_org' in config:
-            special_org_name = config.get ('ckanext.iauth.special_org')
-        else:
-            special_org_name = ''
+    if 'ckanext.iauth.special_org' in config:
+        special_org_name = config.get ('ckanext.iauth.special_org')
+    else:
+        return False
 
-        if special_org_name:
-            group_dict = logic.get_action('organization_show')(context, {'id': owner_org})
-            if 'name' in group_dict:
-                if group_dict['name'] ==  special_org_name:
-                    if data_dict['upload_local'] != '' or data_dict['upload_remote'] != '':
-                        return True
+    group_dict = logic.get_action('organization_show')(context, {'id': owner_org})
+
+    if group_dict and 'name' in group_dict:
+        if group_dict['name'] !=  special_org_name:
+            return False
+
+    if ('upload_local' in data_dict and data_dict['upload_local'] != '')  or ('upload_remote' in data_dict and data_dict['upload_remote'] != '') :
+            return True
 
     return False
 
@@ -90,53 +90,11 @@ def resource_create(context, data_dict):
     ### From CKAN Core END
     #################################################################
 
-@logic.auth_allow_anonymous_access
-def organization_show(context, data_dict):
-
-    # From CKAN Core -with modifications :-) bug-fix state active !?
-    user = context.get('user')
-    group = get_group_object(context, data_dict)
-
-    # Anja
-    # Check wether somebody tries to include datasets into an org who is no admin
-    # in the first instance  api calls concerned
-    # Anja, 23.8.17 - :-) Found no better solution :-)
-    userobj = context.get('auth_user_obj')
-    if userobj:
-        if userobj.sysadmin:
-            return {'success': True}
-
-    if 'api_version' in context:
-        # New
-        return {'success': False, 'msg': _('Not authorized to read an organization.')}
-
-        # Old: just for include_datasets
-        if 'include_datasets' in data_dict:
-            if data_dict['include_datasets'] != False:
-                authorized = authz.has_user_permission_for_group_or_org(
-                    group.id, user, 'member_create')
-                if not authorized:
-                    return {'success': False, 'msg': _('User %s not authorized to read group %s WITH include_datasets') % (user, group.title)}
-
-
-    #From CKan core
-    if group.state == 'active': # Anja, 23.8.17 - not clear what this is for
-        return {'success': True}
-    authorized = authz.has_user_permission_for_group_or_org(
-            group.id, user, 'read')
-
-    if authorized:
-        return {'success': True}
-    else:
-        return {'success': False, 'msg': _('User %s not authorized to read group %s') % (user, group.id)}
-
-
 
 @logic.auth_allow_anonymous_access
 def package_show(context, data_dict):
     #########################################################
     # From Core CKAN ----
-    #print "************ auth package show"
     user = context.get('user')
     package = get_package_object(context, data_dict)
     # draft state indicates package is still in the creation process
@@ -201,7 +159,6 @@ def package_show(context, data_dict):
 def package_update(context, data_dict):
 
     package = logic_auth.get_package_object(context, data_dict)
-    #print "**************** Anja auth package update"
     # Handle
     if check_loaded_plugin (context, {'name':'handle'}):
         if package.private is not None and package.private is False and data_dict is not None and data_dict.get('private', '') == 'True':
@@ -252,7 +209,6 @@ def package_update(context, data_dict):
             local_access = False
             org_list = toolkit.get_action('organization_list_for_user')({}, {"id": user_info.id, "permission": "member_create"})
             for x in org_list:
-                #print x.values()
                 if owner_org in x.values():
                     local_access = True
 
@@ -316,6 +272,8 @@ def resource_update(context, data_dict):
                 if 'subset_of' in resource.extras and resource.extras['subset_of'] != "":
                     return {'success': False, 'msg': 'Please create only new versions from the original resource'}
 
+
+
     # From Core
     model = context['model']
     user = context.get('user')
@@ -330,6 +288,7 @@ def resource_update(context, data_dict):
 
     pkg_dict = {'id': pkg.id}
     authorized = authz.is_authorized('package_update', context, pkg_dict).get('success')
+
 
     if not authorized:
         return {'success': False,
@@ -349,6 +308,9 @@ def resource_update(context, data_dict):
             if 'url' in data_dict:
                 data_dict['url'] = ''
             raise ValidationError(errors)
+            return {'success': False,
+                    'msg': _('Members of CCCA Extern are not authorized to upload resources')}
+
         ######## End Modification for special_org, Anja, 18.8.17
 
         return {'success': True}
@@ -373,9 +335,6 @@ def package_delete(context, data_dict):
 
     #Renamed ...
     return authz.is_authorized('package_update', context, data_dict)
-
-
-
 
 #@logic.auth_allow_anonymous_access
 def resource_delete(context, data_dict):
@@ -413,42 +372,3 @@ def resource_delete(context, data_dict):
     else:
         return {'success': True}
     # From CORE End
-
-#Anja, 20.7.17 If we do not add this 'decoration' Anon Access denied before even moving into this function ....
-@p.toolkit.auth_allow_anonymous_access
-def user_list(context, data_dict):
-
-    if 'api_version' in context:
-        # New
-        return {'success': False, 'msg': _('Not authorized to get user list.')}
-    #CKAN Core
-    # Users list is visible by default
-
-    # ATTENTION WE NEED THIS LIST TO BE PUBLIC ... used at other places - ccca-plugin; further plugins?
-    return {'success': True}
-
-    user_info = context.get('auth_user_obj')
-
-    if not user_info:
-        return {'success': False, 'msg': _('Not authorized to see this list')}
-
-    return {'success': True}
-
-#@logic.auth_allow_anonymous_access
-#Prevent Not logged in Users to see user info
-def user_show(context, data_dict):
-
-    if 'api_version' in context:
-        # New
-        return {'success': False, 'msg': _('Not authorized to read a user.')}
-
-    return {'success': True}
-
-@logic.auth_allow_anonymous_access
-def group_show(context, data_dict):
-
-    if 'api_version' in context:
-        # New
-        return {'success': False, 'msg': _('Not authorized to read a group.')}
-
-    return {'success': True}

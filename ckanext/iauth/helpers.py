@@ -21,12 +21,8 @@ def iauth_anon_activity(activity):
 
     anon_activity = activity
     if 'data' in activity:
-        #print activity['data']
         if 'actor' in activity['data']:
-            #print activity['data']['actor']
             anon_activity['data']['actor'] = '<span class="actor"> XXXXXX </span>'
-
-    #print type(activity)
     return anon_activity
 
 def iauth_get_special_org ():
