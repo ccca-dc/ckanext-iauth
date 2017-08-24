@@ -265,14 +265,16 @@ def resource_update(context, data_dict):
         if upload or 'url' in data_dict and "/" in data_dict['url'] and data_dict['url'] != resource.url:
             # check if resource has a newer version
             if 'newer_version' in resource.extras and resource.extras['newer_version'] != "":
+                errors = { 'url': [u'Older versions cannot be updated']}
+                raise ValidationError(errors)
                 return {'success': False, 'msg': 'Older versions cannot be updated'}
             # check if this is a subset, then it cannot create a new version like that
 
             if check_loaded_plugin (context, {'name':'thredds'}):
                 if 'subset_of' in resource.extras and resource.extras['subset_of'] != "":
+                    errors = { 'url': [u'Please create only new versions from the original resource']}
+                    raise ValidationError(errors)
                     return {'success': False, 'msg': 'Please create only new versions from the original resource'}
-
-
 
     # From Core
     model = context['model']
