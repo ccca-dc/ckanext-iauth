@@ -7,9 +7,8 @@
 
 {% block activity_stream %}
 
-  {% if not c.user %}
-      <p class="empty">{{ _('Sorry, actitivities  visible only for logged in users ') }}</p>
-  {% elif activities %}
+
+  {% if activities %}
     <ul class="activity" data-module="activity-stream" data-module-more="{{ has_more }}" data-module-context="{{ controller }}" data-module-id="{{ id }}" data-module-offset="{{ offset }}">
       {% block activity_stream_inner %}
         {% if offset > 0 %}
@@ -17,7 +16,12 @@
         {% endif %}
         {% for activity in activities %}
           {% if loop.index <= has_more_length %}
-            {% snippet 'snippets/activity_item.html', activity=activity %}
+              {% if c.user %}
+                {% snippet 'snippets/activity_item.html', activity=activity %}
+              {% else %}
+                {% set anon_activity = h.iauth_anon_activity(activity)%}
+                {% snippet 'snippets/activity_item.html', activity=anon_activity %}
+              {% endif %}
           {% endif %}
         {% endfor %}
         {% if has_more %}

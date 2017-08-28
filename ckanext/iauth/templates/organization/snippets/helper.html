@@ -1,0 +1,32 @@
+{% set cccaextern = h.iauth_get_special_org() %}
+
+
+<div class="module module-narrow module-shallow">
+  <h2 class="module-heading">
+    <i class="icon-info-sign"></i>
+    {{ _('CCCA Organizations')}}
+  </h2>
+  <div class="module-content">
+    <p>
+    {#}  {% trans %} {#}
+
+      The <a href="https://www.ccca.ac.at" target="_blank">Climate Change Centre Austria</a>
+      is an <a href="http://www.ccca.ac.at/en/about-ccca/the-association-ccca/members/" target="_blank">association</a>
+      of the most important climate research organizations in Austria.
+      <br>  <br>
+      The CCCA Datacentre provides users belonging to one of the <a href="http://www.ccca.ac.at/en/about-ccca/the-association-ccca/members/" target="_blank">CCCA Member Organizations</a>
+      with the possibility to upload, store and manage their ressources, enter metadata and make their
+      resources publically available with an unique, persistent identifier (like "DOI" but free of charge).
+      <br>  <br>
+
+      {% if cccaextern %}
+
+      Users of the organization <a href="{{ h.url_for(controller='organization', action='read', id=cccaextern) }}">"CCCA Extern" </a>do not belong to any of the CCCA-member organizations
+      but are nevertheless able to create subsets of existing resources, create datasets comprising <em>links</em>
+      to other resources in the Internet. Hence they are able to explore our possibilities.
+
+      {% endif %}
+    {#} {% endtrans %} {#}
+    </p>
+  </div>
+</div>

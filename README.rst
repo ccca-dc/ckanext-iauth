@@ -38,10 +38,14 @@ ckanext-iauth
    Also modifies the rights if the EDITOR role:
    Only modifiy and delete your own dataset
 
+   Private datasets are private: Only owner (and Admins) can see private datasets
+
+   Also: Members of special_org are only allowed to create subsets or provide resource links
+
    Parameter in Development/Production.ini:
 
    ckanext.iauth.editor_modified = true
-
+   ckanext.iauth.special_org = ccca-extern
 
 
 

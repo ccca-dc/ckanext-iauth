@@ -13,14 +13,88 @@ from pylons import config
 
 from ckanext.iauth.action import check_loaded_plugin
 
-from ckan.logic.auth import (get_package_object, get_resource_object)
+from ckan.logic.auth import (get_package_object, get_resource_object, get_group_object,get_related_object)
+
+
+ValidationError = logic.ValidationError
+NotAuthorized = toolkit.NotAuthorized
+Invalid = toolkit.Invalid
+
+def _check_unauthorized_upload(context, data_dict, owner_org):
+    # Return True if UNAUTHORIZED and False if authorized
+
+    special_org_name = ''
+
+    if 'ckanext.iauth.special_org' in config:
+        special_org_name = config.get ('ckanext.iauth.special_org')
+    else:
+        return False
+
+    group_dict = logic.get_action('organization_show')(context, {'id': owner_org})
+
+    if group_dict and 'name' in group_dict:
+        if group_dict['name'] !=  special_org_name:
+            return False
+
+    if ('upload_local' in data_dict and data_dict['upload_local'] != '')  or ('upload_remote' in data_dict and data_dict['upload_remote'] != '') :
+            return True
+
+    return False
+
+def resource_create(context, data_dict):
+
+    #################################################################
+    ### From CKAN Core
+    model = context['model']
+    user = context.get('user')
+    package_id = data_dict.get('package_id')
+    if not package_id and data_dict.get('id'):
+        # This can happen when auth is deferred, eg from `resource_view_create`
+        resource = logic_auth.get_resource_object(context, data_dict)
+        package_id = resource.package_id
+
+    if not package_id:
+        raise logic.NotFound(
+            _('No dataset id provided, cannot check auth.')
+        )
+
+    # check authentication against package
+    pkg = model.Package.get(package_id)
+    if not pkg:
+        raise logic.NotFound(
+            _('No package found for this resource, cannot check auth.')
+        )
+
+    pkg_dict = {'id': pkg.id}
+    authorized = authz.is_authorized('package_update', context, pkg_dict).get('success')
+
+    ######## Modification for special_org, Anja, 18.8.17
+    # check unauthrized upload for memebers of special_org
+    if  _check_unauthorized_upload(context, data_dict, pkg.owner_org):
+        errors = { 'url': [u'Members of CCCA Extern are not authorized to upload resources']}
+        data_dict['upload_local'] = ''
+        data_dict['upload_remote'] = ''
+        # We need to delete the field, because localimp validator only requires "non-empty"
+        # and user can just press again "add" or "update"
+        if 'url' in data_dict:
+            data_dict['url'] = ''
+        raise ValidationError(errors)
+    ######## End Modification for special_org, Anja, 18.8.17
+
+    if not authorized:
+        return {'success': False,
+                'msg': _('User %s not authorized to create resources on dataset %s') %
+                        (str(user), package_id)}
+    else:
+        return {'success': True}
+    ### From CKAN Core END
+    #################################################################
+
 
 @logic.auth_allow_anonymous_access
 def package_show(context, data_dict):
-    #print "*********** Anja package_show iauth"
     #########################################################
     # From Core CKAN ----
-
     user = context.get('user')
     package = get_package_object(context, data_dict)
     # draft state indicates package is still in the creation process
@@ -29,6 +103,9 @@ def package_show(context, data_dict):
         auth = authz.is_authorized('package_update',
                                        context, data_dict)
         authorized = auth.get('success')
+    # new elif Anja, 17.8.17; let otherwise to problems with create_subset
+    elif package.state.startswith('deleted'):
+        return {'success': True}
     elif package.owner_org is None and package.state == 'active':
         return {'success': True}
     else:
@@ -38,8 +115,9 @@ def package_show(context, data_dict):
         authorized = authz.has_user_permission_for_group_or_org(
             package.owner_org, user, 'read')
 
-        ####################### Modification ###########################
-        # Every normal (Editor) user is only allowed to see his own private packages except when they share one groups
+    ####################### Modification ###########################
+    # Every normal (Editor) user is only allowed to see his own private packages
+    if package.private and authorized:
 
         # check Admin
         authorized_admin = authz.has_user_permission_for_group_or_org(package.owner_org, user, 'member_create')
@@ -50,15 +128,23 @@ def package_show(context, data_dict):
         # Editor remains; check if we try to edit our own dataset
         user_info = context.get('auth_user_obj')
 
-        if user_info == None:  # Anon User
+        if user_info == None:  # Anon User - should not happen here
             authorized = False
 
         #Editors and Members left
         if authorized:  # check if we need to restrict access
             if user_info.id != package.creator_user_id and  user_info.email != package.maintainer_email and user_info.email != package.author_email:
+                #errors = { 'private': [u'Not authorized to to see private datasets']}
+
+                # Leider geht das hier alles nicht :-(
+                #raise Exception("TEst")
+                #raise NotAuthorized("Test")
+                #raise ValidationError("Test")
+
+
                 authorized = False
 
-        ####################### Modification END ###########################
+    ####################### Modification END ###########################
 
     if not authorized:
         return {'success': False, 'msg': _('User %s not authorized to read package %s') % (user, package.id)}
@@ -71,10 +157,8 @@ def package_show(context, data_dict):
 
 #@logic.auth_allow_anonymous_access
 def package_update(context, data_dict):
-    #print "*********** Anja update iauth"
 
     package = logic_auth.get_package_object(context, data_dict)
-
     # Handle
     if check_loaded_plugin (context, {'name':'handle'}):
         if package.private is not None and package.private is False and data_dict is not None and data_dict.get('private', '') == 'True':
@@ -90,6 +174,12 @@ def package_update(context, data_dict):
             if len(subset_uniqueness) > 0:
                 return {'success': False,
                         'msg': 'Dataset cannot be set public as it contains a subset, which was already published'}
+    # check Admin
+    user = context.get('user')
+    authorized_admin = authz.has_user_permission_for_group_or_org(package.owner_org, user, 'member_create')
+
+    if  authorized_admin:
+        return {'success': True}
 
     # Editor_mod
     editor_restricted = False
@@ -118,25 +208,19 @@ def package_update(context, data_dict):
             owner_org = package.owner_org
             local_access = False
             org_list = toolkit.get_action('organization_list_for_user')({}, {"id": user_info.id, "permission": "member_create"})
-
             for x in org_list:
-                #print x.values()
                 if owner_org in x.values():
-                        #print "success"
-                        #print last_session
-                        local_access = True
+                    local_access = True
 
             if not local_access:   # We are Editor: restrict access
-
                 # Editors only allowed to edit own packages
                 if user_info.id == package.creator_user_id or user_info.email == package.maintainer_email or user_info.email == package.author_email:
                     check1 = True
                 else:
                     check1 = False
+
         #### Modification for restricted editor: editor_mod flag - Anja 13.7.17 END
         ###########################################################################
-
-
     else:
         # If dataset is not owned then we can edit if config permissions allow
         if authz.auth_is_anon_user(context):
@@ -181,11 +265,15 @@ def resource_update(context, data_dict):
         if upload or 'url' in data_dict and "/" in data_dict['url'] and data_dict['url'] != resource.url:
             # check if resource has a newer version
             if 'newer_version' in resource.extras and resource.extras['newer_version'] != "":
+                errors = { 'url': [u'Older versions cannot be updated']}
+                raise ValidationError(errors)
                 return {'success': False, 'msg': 'Older versions cannot be updated'}
             # check if this is a subset, then it cannot create a new version like that
 
             if check_loaded_plugin (context, {'name':'thredds'}):
                 if 'subset_of' in resource.extras and resource.extras['subset_of'] != "":
+                    errors = { 'url': [u'Please create only new versions from the original resource']}
+                    raise ValidationError(errors)
                     return {'success': False, 'msg': 'Please create only new versions from the original resource'}
 
     # From Core
@@ -203,11 +291,30 @@ def resource_update(context, data_dict):
     pkg_dict = {'id': pkg.id}
     authorized = authz.is_authorized('package_update', context, pkg_dict).get('success')
 
+
     if not authorized:
         return {'success': False,
                 'msg': _('User %s not authorized to edit resource %s') %
                         (str(user), resource.id)}
     else:
+        #return {'success': True}
+
+        ######## Modification for special_org, Anja, 18.8.17
+        # check unauthorized upload for members of special_org
+        if  _check_unauthorized_upload(context, data_dict, pkg.owner_org):
+            errors = { 'url': [u'Members of CCCA Extern are not authorized to upload resources']}
+            data_dict['upload_local'] = ''
+            data_dict['upload_remote'] = ''
+            # We need to delete the field, because localimp validator only requires "non-empty"
+            # and user can just press again "add" or "update"
+            if 'url' in data_dict:
+                data_dict['url'] = ''
+            raise ValidationError(errors)
+            return {'success': False,
+                    'msg': _('Members of CCCA Extern are not authorized to upload resources')}
+
+        ######## End Modification for special_org, Anja, 18.8.17
+
         return {'success': True}
     # From Core END
 
@@ -230,9 +337,6 @@ def package_delete(context, data_dict):
 
     #Renamed ...
     return authz.is_authorized('package_update', context, data_dict)
-
-
-
 
 #@logic.auth_allow_anonymous_access
 def resource_delete(context, data_dict):
@@ -270,29 +374,3 @@ def resource_delete(context, data_dict):
     else:
         return {'success': True}
     # From CORE End
-
-#Anja, 20.7.17 If we do not add this 'decoration' Anon Access denied before even moving into this function ....
-@p.toolkit.auth_allow_anonymous_access
-def user_list(context, data_dict):
-    # Users list is visible by default
-
-    # ATTENTION WE NEED THIS LIST TO BE PUBLIC ... used at other places - ccca-plugin; further plugins?
-    return {'success': True}
-
-    user_info = context.get('auth_user_obj')
-
-    if not user_info:
-        return {'success': False, 'msg': _('Not authorized to see this list')}
-
-    return {'success': True}
-
-#@logic.auth_allow_anonymous_access
-#Prevent Not logged in Users to see user info
-def user_show(context, data_dict):
-
-    return {'success': True}
-
-@logic.auth_allow_anonymous_access
-def group_show(context, data_dict):
-
-    return {'success': True}

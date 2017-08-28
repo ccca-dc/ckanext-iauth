@@ -1,0 +1,63 @@
+{#
+Displays a list of datasets.
+
+packages       - A list of packages to display.
+list_class     - The class name for the list item.
+item_class     - The class name to use on each item.
+hide_resources - If true hides the resources (default: false).
+banner         - If true displays a popular banner (default: false).
+truncate       - The length to trucate the description to (default: 180)
+truncate_title - The length to truncate the title to (default: 80).
+
+Example:
+
+  {% snippet 'snippets/package_list.html', packages=c.datasets %}
+
+#}
+{% set is_org = h.iauth_check_controller_org (c) %}
+{% set is_user = h.iauth_check_controller_user (c) %}
+{% set is_admin = h.iauth_check_admin (c, c.userobj) %}
+{% if c.userobj %}
+  {% set user_id = c.userobj.id %}
+  {% set user_mail = c.userobj.email %}
+{% else %}
+  {% set user_id = '' %}
+  {% set user_email = '' %}
+{% endif %}
+
+
+{% block package_list %}
+
+  {% if packages %}
+    <ul class="{{ list_class or 'dataset-list unstyled' }}">
+    	{% block package_list_inner %}
+        {% if is_user  %}
+            <h3> {{packages|length}} datapackages </h3>
+            <hr>
+        {% endif %}
+        {% set other_private_packages = 0 %}
+	      {% for package in packages %}
+          {% if not is_org or not package.private %}
+	           {% snippet 'snippets/package_item.html', package=package, item_class=item_class, hide_resources=hide_resources, banner=banner, truncate=truncate, truncate_title=truncate_title %}
+          {% else %}
+            {#} Check if owner and make sure, that admins can see all packages {#}
+              {% if is_admin or package.creator_user_id == user_id  or package.author_email == user_email or package.maintainer_email == user_email %}
+                  {% snippet 'snippets/package_item.html', package=package, item_class=item_class, hide_resources=hide_resources, banner=banner, truncate=truncate, truncate_title=truncate_title %}
+              {% else %}
+                {% set other_private_packages = other_private_packages + 1  %}
+              {% endif %}
+          {% endif %}
+          {% if loop.last and other_private_packages != 0 %}
+            {% if other_private_packages == 1 %}
+              <hr>
+              <h3> {{other_private_packages}} private datapackage of other user not shown</h3>
+              {% else %}
+              <hr>
+              <h3> {{other_private_packages}} private datapackages of other users not shown</h3>
+              {% endif %}
+          {% endif %}
+	      {% endfor %}
+	    {% endblock %}
+    </ul>
+  {% endif %}
+{% endblock %}
