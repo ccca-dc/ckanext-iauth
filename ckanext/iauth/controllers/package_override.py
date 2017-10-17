@@ -53,14 +53,14 @@ class PackageContributeOverride(p.SingletonPlugin, PackageController):
         except (NotFound, NotAuthorized):
             abort(404, _('Resource not found'))
 
+
         if authz.auth_is_anon_user(context) and rsc.pop('anonymous_download', 'false') == 'false':
-            abort(401, _('Unauthorized to read resource %s') % id)
+            abort(401, _('Unauthorized to read resource %s') % rsc['name'])
         else:
             if rsc.get('url_type') == 'upload':
                 upload = uploader.ResourceUpload(rsc)
                 filepath = upload.get_path(rsc['id'])
                 fileapp = paste.fileapp.FileApp(filepath)
-                log.debug(fileapp)
                 response.headers['X-Accel-Redirect'] = "/files/{0}".format(os.path.relpath(filepath,start='/e/ckan/resources/'))
                 response.headers["Content-Disposition"] = "attachment; filename={0}".format(rsc.get('url','').split('/')[-1])
                 content_type, content_enc = mimetypes.guess_type(
@@ -69,5 +69,5 @@ class PackageContributeOverride(p.SingletonPlugin, PackageController):
                     response.headers['Content-Type'] = content_type
                 return response
             elif not 'url' in rsc:
-                abort(404, _('No download is available'))
+                abort(404, _('No download is available'))    
             redirect(rsc['url'])
