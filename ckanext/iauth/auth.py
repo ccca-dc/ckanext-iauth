@@ -166,6 +166,7 @@ def package_update(context, data_dict):
                     'msg': 'Public datasets cannot be set private again'}
 
     #Thredds - subset
+    # TODO
     if check_loaded_plugin (context, {'name':'thredds'}):
         from ckanext.thredds import helpers
         if package.private is not None and package.private is True and data_dict is not None and data_dict.get('private', '') == 'False':
@@ -254,9 +255,15 @@ def package_update(context, data_dict):
 def resource_update(context, data_dict):
 
     resource = logic_auth.get_resource_object(context, data_dict)
+    print(resource)
+    pkg = toolkit.get_action('package_show')(context, {'id': resource.package_id})
 
-    #resourceversions
+    # resourceversions
     if check_loaded_plugin (context, {'name':'resourceversions'}):
+        try:
+            newer_versions = [element['id'] for element in pkg['relations'] if element['relation'] == 'has_version']
+        except:
+            newer_versions = []
 
         upload = False
         if 'upload' in data_dict and data_dict['upload'] != "" or 'upload_local' in data_dict and data_dict['upload_local'] != "" or 'upload_remote' in data_dict and data_dict['upload_remote'] != "":
@@ -264,17 +271,18 @@ def resource_update(context, data_dict):
 
         if upload or 'url' in data_dict and "/" in data_dict['url'] and data_dict['url'] != resource.url:
             # check if resource has a newer version
-            if 'newer_version' in resource.extras and resource.extras['newer_version'] != "":
+            if len(newer_versions) > 0:
                 errors = { 'url': [u'Older versions cannot be updated']}
                 raise ValidationError(errors)
                 return {'success': False, 'msg': 'Older versions cannot be updated'}
             # check if this is a subset, then it cannot create a new version like that
 
-            if check_loaded_plugin (context, {'name':'thredds'}):
-                if 'subset_of' in resource.extras and resource.extras['subset_of'] != "":
-                    errors = { 'url': [u'Please create only new versions from the original resource']}
-                    raise ValidationError(errors)
-                    return {'success': False, 'msg': 'Please create only new versions from the original resource'}
+    # Thredds - subset
+    if check_loaded_plugin(context, {'name': 'thredds'}):
+        from ckanext.thredds import helpers
+        if helpers.get_parent_dataset(pkg['id']) is not None:
+            return {'success': False,
+                    'msg': _('Subsets cannot be modified')}
 
     # From Core
     model = context['model']
@@ -340,6 +348,9 @@ def package_delete(context, data_dict):
 
 #@logic.auth_allow_anonymous_access
 def resource_delete(context, data_dict):
+    model = context['model']
+    user = context.get('user')
+    resource = get_resource_object(context, data_dict)
 
     # Handle
     if check_loaded_plugin (context, {'name':'handle'}):
@@ -356,10 +367,24 @@ def resource_delete(context, data_dict):
         if pkg['private'] is False:
             return {'success': False, 'msg': 'Public resources cannot be deleted'}
 
+    pkg = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+
+    # resourceversions
+    if check_loaded_plugin(context, {'name': 'resourceversions'}):
+        from ckanext.thredds import helpers
+        versions = helpers.get_versions(pkg['id'])
+
+        if len(versions) > 0:
+            return {'success': False, 'msg': 'resource versions cannot be deleted'}
+
+    # Thredds - subset
+    if check_loaded_plugin(context, {'name': 'thredds'}):
+        from ckanext.thredds import helpers
+        if helpers.get_parent_dataset(resource['package_id']) is not None:
+            return {'success': False,
+                    'msg': _('resource subsets cannot be deleted')}
+
     # From CORE
-    model = context['model']
-    user = context.get('user')
-    resource = get_resource_object(context, data_dict)
 
     # check authentication against package
     pkg = model.Package.get(resource.package_id)
