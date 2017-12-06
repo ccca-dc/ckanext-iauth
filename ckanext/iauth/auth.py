@@ -13,7 +13,10 @@ from pylons import config
 
 from ckanext.iauth.action import check_loaded_plugin
 
-from ckan.logic.auth import (get_package_object, get_resource_object, get_group_object,get_related_object)
+from ckan.logic.auth import (get_package_object, get_resource_object, get_group_object)
+
+from ckanext.thredds import helpers as helpers_thredds
+from ckanext.resourceversions import helpers as helpers_resourceversions
 
 
 ValidationError = logic.ValidationError
@@ -165,12 +168,10 @@ def package_update(context, data_dict):
             return {'success': False,
                     'msg': 'Public datasets cannot be set private again'}
 
-    #Thredds - subset
-    # TODO
-    if check_loaded_plugin (context, {'name':'thredds'}):
-        from ckanext.thredds import helpers
+    # Thredds - subset
+    if check_loaded_plugin(context, {'name': 'thredds'}):
         if package.private is not None and package.private is True and data_dict is not None and data_dict.get('private', '') == 'False':
-            subset_uniqueness = helpers.check_subset_uniqueness(package.id)
+            subset_uniqueness = helpers_thredds.check_subset_uniqueness(package.id)
 
             if len(subset_uniqueness) > 0:
                 return {'success': False,
@@ -259,28 +260,28 @@ def resource_update(context, data_dict):
     pkg = toolkit.get_action('package_show')(context, {'id': resource.package_id})
 
     # resourceversions
-    if check_loaded_plugin (context, {'name':'resourceversions'}):
+    if check_loaded_plugin(context, {'name': 'resourceversions'}):
         try:
             newer_versions = [element['id'] for element in pkg['relations'] if element['relation'] == 'has_version']
         except:
             newer_versions = []
 
-        upload = False
-        if 'upload' in data_dict and data_dict['upload'] != "" or 'upload_local' in data_dict and data_dict['upload_local'] != "" or 'upload_remote' in data_dict and data_dict['upload_remote'] != "":
-            upload = True
+        if len(newer_versions) > 0:
+            upload = False
+            if data_dict.get('upload', '') != "" or data_dict.get('upload_local', '') != "" or data_dict.get('upload_remote', '') != "":
+                upload = True
 
-        if upload or 'url' in data_dict and "/" in data_dict['url'] and data_dict['url'] != resource.url:
-            # check if resource has a newer version
-            if len(newer_versions) > 0:
-                errors = { 'url': [u'Older versions cannot be updated']}
+
+            if (upload or data_dict.get('clear_upload') != "" and data_dict['url'] != resource.url
+            or (data_dict.get('upload') == "" and data_dict.get('clear_upload') == "" and data_dict['url'] != resource.url and resource.url_type in ("", None))):
+                # check if resource has a newer version
+                errors = {'url': [u'Older versions cannot be updated']}
                 raise ValidationError(errors)
                 return {'success': False, 'msg': 'Older versions cannot be updated'}
-            # check if this is a subset, then it cannot create a new version like that
 
     # Thredds - subset
     if check_loaded_plugin(context, {'name': 'thredds'}):
-        from ckanext.thredds import helpers
-        if helpers.get_parent_dataset(pkg['id']) is not None:
+        if helpers_thredds.get_parent_dataset(pkg['id']) is not None:
             return {'success': False,
                     'msg': _('Subsets cannot be modified')}
 
@@ -367,30 +368,28 @@ def resource_delete(context, data_dict):
         if pkg['private'] is False:
             return {'success': False, 'msg': 'Public resources cannot be deleted'}
 
-    pkg = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
-
-    # resourceversions
-    if check_loaded_plugin(context, {'name': 'resourceversions'}):
-        from ckanext.thredds import helpers
-        versions = helpers.get_versions(pkg['id'])
-
-        if len(versions) > 0:
-            return {'success': False, 'msg': 'resource versions cannot be deleted'}
-
-    # Thredds - subset
-    if check_loaded_plugin(context, {'name': 'thredds'}):
-        from ckanext.thredds import helpers
-        if helpers.get_parent_dataset(resource['package_id']) is not None:
-            return {'success': False,
-                    'msg': _('resource subsets cannot be deleted')}
-
     # From CORE
 
     # check authentication against package
     pkg = model.Package.get(resource.package_id)
     if not pkg:
         raise logic.NotFound(_('No package found for this resource, cannot check auth.'))
+    # From CORE End
 
+    # resourceversions
+    if check_loaded_plugin(context, {'name': 'resourceversions'}):
+        versions = helpers_resourceversions.get_versions(pkg['id'])
+
+        if len(versions) > 0:
+            return {'success': False, 'msg': 'Resource versions cannot be deleted. Please delete whole package.'}
+
+    # Thredds - subset
+    if check_loaded_plugin(context, {'name': 'thredds'}):
+        if helpers_thredds.get_parent_dataset(resource['package_id']) is not None:
+            return {'success': False,
+                    'msg': _('Resource subsets cannot be deleted. Please delete whole package.')}
+
+    # From CORE
     pkg_dict = {'id': pkg.id}
     authorized = package_delete(context, pkg_dict).get('success')
 
