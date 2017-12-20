@@ -37,7 +37,7 @@ class IauthPlugin(plugins.SingletonPlugin):
                     action='resource_download')
 
         return map
-        
+
     # ITemplateHelpers
     def get_helpers(self):
         return {
@@ -72,22 +72,29 @@ class IauthPlugin(plugins.SingletonPlugin):
             #'group_show': auth.group_show
             }
 
-    # IPackageController
+# IPackageController
     def after_delete(self, context, pkg_dict):
 
+        # Georg, Kathi, Anja am 15.11.2017:
+        # We purge after all deletes EXCEPT when the user is a sysadmins
+        # because: sysadmins can use purge themselves, but we need to really delete the names
+        # delete is for normal users only allowed for datasets which are private!
+
         pkg_name = ''
+        user = context.get('auth_user_obj')
+        pkg = context.get('package')
+        if pkg:
+            pkg_name = pkg.name
+        else:
+            pkg_name = pkg_dict['id']
+
         try: # to purge
-            user = context.get('auth_user_obj')
-            pkg = context.get('package')
-            if user and pkg:
-                if user.id == pkg.creator_user_id and  pkg.private:
-                    pkg_name = pkg.name
-                    context['ignore_auth'] = True
-                    logic.get_action('dataset_purge')(context,pkg_dict)
-                    log.info('Dataset  %s purged', pkg_name)
-                else:
-                    log.info('Dataset  %s NOT purged - because not private or user != creator', pkg_name)
+            if user and not user.sysadmin:
+                context['ignore_auth'] = True
+                logic.get_action('dataset_purge')(context,pkg_dict)
+                log.info('Dataset  %s purged', pkg_name)
             else:
-                log.info('Dataset  %s NOT purged - no context user or no context package', pkg_name)
+                log.info('Dataset  %s NOT purged - because user is sysadmin', pkg_name)
+
         except:
             log.info('Dataset %s NOT purged and potentially NOT deleted', pkg_name)
