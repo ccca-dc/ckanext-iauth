@@ -271,13 +271,13 @@ def resource_update(context, data_dict):
             if data_dict.get('upload', '') != "" or data_dict.get('upload_local', '') != "" or data_dict.get('upload_remote', '') != "":
                 upload = True
 
-
-            if (upload or data_dict.get('clear_upload') != "" and data_dict['url'] != resource.url
-            or (data_dict.get('upload') == "" and data_dict.get('clear_upload') == "" and data_dict['url'] != resource.url and resource.url_type in ("", None))):
-                # check if resource has a newer version
-                errors = {'url': [u'Older versions cannot be updated']}
-                raise ValidationError(errors)
-                return {'success': False, 'msg': 'Older versions cannot be updated'}
+            if context.get('create_version', True) is True and pkg['private'] is False:
+                if (upload is True or data_dict.get('clear_upload') != "" and data_dict['url'] != resource.url
+                or (upload is False and data_dict.get('clear_upload') == "" and data_dict['url'] != resource.url and resource.url_type in ("", None))):
+                    # check if resource has a newer version
+                    errors = {'url': [u'Older versions cannot be updated']}
+                    raise ValidationError(errors)
+                    return {'success': False, 'msg': 'Older versions cannot be updated'}
 
     # Thredds - subset
     if check_loaded_plugin(context, {'name': 'thredds'}):
