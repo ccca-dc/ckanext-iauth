@@ -61,7 +61,7 @@ class PackageContributeOverride(p.SingletonPlugin, PackageController):
                 upload = uploader.ResourceUpload(rsc)
                 filepath = upload.get_path(rsc['id'])
                 fileapp = paste.fileapp.FileApp(filepath)
-                response.headers['X-Accel-Redirect'] = "/files/{0}".format(os.path.relpath(filepath,start='/e/ckan/resources/'))
+                response.headers['X-Accel-Redirect'] = "/files/{0}".format(os.path.relpath(filepath, start='/e/ckan/'))
                 response.headers["Content-Disposition"] = "attachment; filename={0}".format(rsc.get('url','').split('/')[-1])
                 content_type, content_enc = mimetypes.guess_type(
                     rsc.get('url', ''))
