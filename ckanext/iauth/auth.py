@@ -272,8 +272,9 @@ def resource_update(context, data_dict):
                 upload = True
 
             if context.get('create_version', True) is True and pkg['private'] is False:
-                if (upload is True or data_dict.get('clear_upload') != "" and data_dict['url'] != resource.url
-                or (upload is False and data_dict.get('clear_upload') == "" and data_dict['url'] != resource.url and resource.url_type in ("", None))):
+                if (upload is True
+                or data_dict.get('clear_upload') not in ("", None) and data_dict['url'] != resource.url
+                or (data_dict.get('clear_upload') in ("", None) and data_dict['url'] != resource.url and resource.url_type in ("", None))):
                     # check if resource has a newer version
                     errors = {'url': [u'Older versions cannot be updated']}
                     raise ValidationError(errors)
