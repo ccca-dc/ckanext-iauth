@@ -6,7 +6,6 @@ import ckan.plugins.toolkit as toolkit
 from ckan.logic.auth import get_resource_object
 from ckan.lib.base import _
 import ckan.plugins as p
-from ckan.logic.auth.create import _check_group_auth
 import ckan.logic.auth as logic_auth
 
 from pylons import config
@@ -250,6 +249,55 @@ def package_update(context, data_dict):
 
     return {'success': True}
     # From Core CKAN END
+
+def _check_group_auth(context, data_dict):
+    '''Has this user got update permission for all of the given groups?
+    If there is a package in the context then ignore that package's groups.
+    (owner_org is checked elsewhere.)
+    :returns: False if not allowed to update one (or more) of the given groups.
+              True otherwise. i.e. True is the default. A blank data_dict
+              mentions no groups, so it returns True.
+
+    '''
+    # fixed function from original code, see below
+    if not data_dict:
+        return True
+
+    model = context['model']
+    user = context['user']
+    pkg = context.get("package")
+
+    api_version = context.get('api_version') or '1'
+
+    group_blobs = data_dict.get('groups', [])
+    groups = set()
+    for group_blob in group_blobs:
+        # group_blob might be a dict or a group_ref
+        if isinstance(group_blob, dict):
+            if api_version == '1':
+                id = group_blob.get('name')
+            else:
+                id = group_blob.get('id')
+            if not id:
+                continue
+        else:
+            id = group_blob
+        grp = model.Group.get(id)
+        if grp is None:
+            raise logic.NotFound(_('Group was not found.'))
+        groups.add(grp)
+
+    if pkg:
+        pkg_groups = pkg.get_groups()
+
+        groups = groups - set(pkg_groups)
+
+    for group in groups:
+        # in the original code the permission was 'update', however update is not a valid permission for member (only 'read' and 'manage_group')
+        if not authz.has_user_permission_for_group_or_org(group.id, user, 'manage_group'):
+            return False
+
+    return True
 
 
 #@logic.auth_allow_anonymous_access
