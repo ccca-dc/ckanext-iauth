@@ -4,6 +4,7 @@ import ckan.logic as logic
 import ckan.authz as authz
 import ckan.plugins.toolkit as toolkit
 from ckan.logic.auth import get_resource_object
+from ckan.logic.auth.create import _group_or_org_member_create
 from ckan.lib.base import _
 import ckan.plugins as p
 import ckan.logic.auth as logic_auth
@@ -212,7 +213,12 @@ def package_update(context, data_dict):
     user = context.get('user')
     authorized_admin = authz.has_user_permission_for_group_or_org(package.owner_org, user, 'member_create')
 
-    if  authorized_admin:
+    if authorized_admin:
+        group_check = _check_group_auth(context, data_dict)
+        if not group_check:
+            return {'success': False,
+                    'msg': _('User %s not authorized to edit these groups') %
+                            (str(user))}
         return {'success': True}
 
     # Editor_mod
@@ -326,6 +332,14 @@ def _check_group_auth(context, data_dict):
         groups = groups - set(pkg_groups)
 
     for group in groups:
+        # users should be able to add datasets to an addition_without_group_membership group, therefore they need to be added as a member
+        group_with_extras = toolkit.get_action('group_show')(context, {'id': group.id})
+        user_to_add = toolkit.get_action('user_show')(context, {'id': user})
+        member_list = toolkit.get_action('member_list')(context, {'id': group.id})
+
+        if group_with_extras.get('addition_without_group_membership', 'False') == 'True' and not any(member[0] == user_to_add['id'] for member in member_list):
+            toolkit.get_action('member_create')(context, {'object_type': 'user', 'object': user, 'capacity': u'member', 'id': group.id})
+
         # in the original code the permission was 'update', however update is not a valid permission for member (only 'read' and 'manage_group')
         if not authz.has_user_permission_for_group_or_org(group.id, user, 'manage_group'):
             return False
@@ -480,3 +494,32 @@ def resource_delete(context, data_dict):
     else:
         return {'success': True}
     # From CORE End
+
+
+def member_create(context, data_dict):
+    group = logic_auth.get_group_object(context, data_dict)
+    user = context['user']
+
+    # users should be able to add themselves as member to an "addition_without_group_membership" group
+    if not group.is_organization and data_dict['object_type'] == "user" and data_dict['capacity'] == "member":
+        group_with_extras = toolkit.get_action('group_show')(context, {'id': data_dict['id']})
+        user_to_add = toolkit.get_action('user_show')(context, {'id': data_dict['object']})
+
+        if group_with_extras.get('addition_without_group_membership', 'False') == 'True' and user_to_add['name'] == user:
+            return {'success': True}
+
+    # User must be able to update the group to add a member to it
+    permission = 'update'
+    # However if the user is member of group then they can add/remove datasets
+    if not group.is_organization and data_dict.get('object_type') == 'package':
+        permission = 'manage_group'
+
+    authorized = authz.has_user_permission_for_group_or_org(group.id,
+                                                                user,
+                                                                permission)
+    if not authorized:
+        return {'success': False,
+                'msg': _('User %s not authorized to edit group %s') %
+                        (str(user), group.id)}
+    else:
+        return {'success': True}

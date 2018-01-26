@@ -65,7 +65,8 @@ class IauthPlugin(plugins.SingletonPlugin):
             'package_create': auth.package_create,
             'package_update': auth.package_update,
             'resource_update': auth.resource_update,
-            'resource_create': auth.resource_create
+            'resource_create': auth.resource_create,
+            'member_create': auth.member_create
             # We Need default CKAN ... (= all open)
             #'organization_show': auth.organization_show,
             #'user_list': auth.user_list,
