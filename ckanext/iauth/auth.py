@@ -18,6 +18,7 @@ from ckan.logic.auth import (get_package_object, get_resource_object, get_group_
 from ckanext.thredds import helpers as helpers_thredds
 from ckanext.resourceversions import helpers as helpers_resourceversions
 
+_check_access = logic.check_access
 
 ValidationError = logic.ValidationError
 NotAuthorized = toolkit.NotAuthorized
@@ -501,12 +502,18 @@ def member_create(context, data_dict):
     user = context['user']
 
     # users should be able to add themselves as member to an "addition_without_group_membership" group
-    if not group.is_organization and data_dict['object_type'] == "user" and data_dict['capacity'] == "member":
+    # and they should be able to add packages even if they aren't members
+    if not group.is_organization:
         group_with_extras = toolkit.get_action('group_show')(context, {'id': data_dict['id']})
-        user_to_add = toolkit.get_action('user_show')(context, {'id': data_dict['object']})
 
-        if group_with_extras.get('addition_without_group_membership', 'False') == 'True' and user_to_add['name'] == user:
-            return {'success': True}
+        if group_with_extras.get('addition_without_group_membership', 'False') == 'True':
+            if data_dict['object_type'] == "user" and data_dict.get('capacity') == "member":
+                user_to_add = toolkit.get_action('user_show')(context, {'id': data_dict['object']})
+
+                if user_to_add['name'] == user:
+                    return {'success': True}
+            elif data_dict['object_type'] == "package" and _check_access('package_update', context, {'id': data_dict['object']}):
+                return {'success': True}
 
     # User must be able to update the group to add a member to it
     permission = 'update'
