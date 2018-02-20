@@ -530,3 +530,7 @@ def member_create(context, data_dict):
                         (str(user), group.id)}
     else:
         return {'success': True}
+
+
+def member_delete(context, data_dict):
+    return authz.is_authorized('member_create', context, data_dict)
