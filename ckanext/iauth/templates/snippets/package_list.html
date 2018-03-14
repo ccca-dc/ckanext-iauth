@@ -32,7 +32,7 @@ Example:
     <ul class="{{ list_class or 'dataset-list unstyled' }}">
     	{% block package_list_inner %}
         {% if is_user  %}
-            <h3> {{packages|length}} datapackages </h3>
+            <h3> {{packages|length}} Datasets </h3>
             <hr>
         {% endif %}
         {% set other_private_packages = 0 %}
@@ -50,10 +50,10 @@ Example:
           {% if loop.last and other_private_packages != 0 %}
             {% if other_private_packages == 1 %}
               <hr>
-              <h3> {{other_private_packages}} private datapackage of other user not shown</h3>
+              <h3> {{other_private_packages}} private dataset of other user not shown</h3>
               {% else %}
               <hr>
-              <h3> {{other_private_packages}} private datapackages of other users not shown</h3>
+              <h3> {{other_private_packages}} private datasets of other users not shown</h3>
               {% endif %}
           {% endif %}
 	      {% endfor %}
