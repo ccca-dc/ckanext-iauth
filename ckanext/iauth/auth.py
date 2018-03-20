@@ -130,14 +130,14 @@ def package_show(context, data_dict):
             return {'success': True}
 
         # Editor remains; check if we try to edit our own dataset
-        user_info = context.get('auth_user_obj')
-
-        if user_info == None:  # Anon User - should not happen here
+        try:
+            user_info = toolkit.get_action('user_show')({}, {'id': user})
+        except:
             authorized = False
 
         #Editors and Members left
         if authorized:  # check if we need to restrict access
-            if user_info.id != package.creator_user_id and  user_info.email != package.maintainer_email and user_info.email != package.author_email:
+            if user_info['id'] != package.creator_user_id and user_info['email'] != package.maintainer_email and user_info['email'] != package.author_email:
                 #errors = { 'private': [u'Not authorized to to see private datasets']}
 
                 # Leider geht das hier alles nicht :-(
