@@ -32,8 +32,13 @@ Example:
     <ul class="{{ list_class or 'dataset-list unstyled' }}">
     	{% block package_list_inner %}
         {% if is_user  %}
+            {% if packages|length > 1 %}
             <h3> {{packages|length}} Datasets </h3>
+            {% else %}
             <hr>
+            <h3> {{packages|length}} Dataset </h3>
+            <hr>
+            {% endif %}
         {% endif %}
         {% set other_private_packages = 0 %}
 	      {% for package in packages %}
