@@ -379,8 +379,9 @@ def resource_update(context, data_dict):
     # Thredds - subset
     if check_loaded_plugin(context, {'name': 'thredds'}):
         if helpers_thredds.get_parent_dataset(pkg['id']) is not None:
-            return {'success': False,
-                    'msg': _('Subsets cannot be modified')}
+            if not context['for_view']:
+                return {'success': False,
+                        'msg': _('Subsets cannot be modified')}
 
     # From Core
     model = context['model']
