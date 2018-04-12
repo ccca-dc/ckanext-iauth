@@ -352,7 +352,7 @@ def _check_group_auth(context, data_dict):
 def resource_update(context, data_dict):
 
     resource = logic_auth.get_resource_object(context, data_dict)
-    print(resource)
+    #print(resource)
     pkg = toolkit.get_action('package_show')(context, {'id': resource.package_id})
 
     # resourceversions
@@ -379,7 +379,7 @@ def resource_update(context, data_dict):
     # Thredds - subset
     if check_loaded_plugin(context, {'name': 'thredds'}):
         if helpers_thredds.get_parent_dataset(pkg['id']) is not None:
-            if not context['for_view']:
+            if 'for_view' not in context:
                 return {'success': False,
                         'msg': _('Subsets cannot be modified')}
 
