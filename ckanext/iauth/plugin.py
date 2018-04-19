@@ -62,9 +62,12 @@ class IauthPlugin(plugins.SingletonPlugin):
         return {
             'package_show': auth.package_show,
             'package_delete': auth.package_delete,
+            'package_create': auth.package_create,
             'package_update': auth.package_update,
             'resource_update': auth.resource_update,
-            'resource_create': auth.resource_create
+            'resource_create': auth.resource_create,
+            'member_create': auth.member_create,
+            'member_delete': auth.member_delete
             # We Need default CKAN ... (= all open)
             #'organization_show': auth.organization_show,
             #'user_list': auth.user_list,
@@ -72,7 +75,7 @@ class IauthPlugin(plugins.SingletonPlugin):
             #'group_show': auth.group_show
             }
 
-    # IPackageController
+# IPackageController
     def after_delete(self, context, pkg_dict):
 
         # Georg, Kathi, Anja am 15.11.2017:
