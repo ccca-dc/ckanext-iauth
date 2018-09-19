@@ -60,6 +60,7 @@ class IauthPlugin(plugins.SingletonPlugin):
     def get_auth_functions(self):
         """Implements IAuthFunctions.get_auth_functions"""
         return {
+            'package_search': auth.package_search,
             'package_show': auth.package_show,
             'package_delete': auth.package_delete,
             'package_create': auth.package_create,
