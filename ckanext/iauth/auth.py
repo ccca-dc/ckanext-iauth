@@ -94,6 +94,26 @@ def resource_create(context, data_dict):
     ### From CKAN Core END
     #################################################################
 
+@logic.auth_allow_anonymous_access
+def package_search(context, data_dict):
+    print "*******************++ Package search"
+    # Check private packages!!!!
+    # With CKAN 2.6.6 the behavior changed
+    # Before: Private Packages were never shown
+    # Now: There is an option which is always set to True: include_private.
+    # However, this collides with our modified Editor role
+    # Therefore: We added a special option (ccca plugin)
+    # thus everybody sees only its own (created) private packages
+    # Note: Admins do not go through auth functions -
+    # thus they can see all private packages
+    print context
+    doch_private = context.get('doch_private')
+    if doch_private:
+        data_dict['include_private'] = True
+    else:
+        data_dict['include_private'] = False
+
+    return {'success': True}
 
 @logic.auth_allow_anonymous_access
 def package_show(context, data_dict):
