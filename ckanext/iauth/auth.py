@@ -96,7 +96,6 @@ def resource_create(context, data_dict):
 
 @logic.auth_allow_anonymous_access
 def package_search(context, data_dict):
-    print "*******************++ Package search"
     # Check private packages!!!!
     # With CKAN 2.6.6 the behavior changed
     # Before: Private Packages were never shown
@@ -106,7 +105,7 @@ def package_search(context, data_dict):
     # thus everybody sees only its own (created) private packages
     # Note: Admins do not go through auth functions -
     # thus they can see all private packages
-    print context
+
     doch_private = context.get('doch_private')
     if doch_private:
         data_dict['include_private'] = True
