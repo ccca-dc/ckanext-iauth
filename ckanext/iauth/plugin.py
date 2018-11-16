@@ -92,6 +92,16 @@ class IauthPlugin(plugins.SingletonPlugin):
         else:
             pkg_name = pkg_dict['id']
 
+        # Kathi/Anja 16.11.2018 - Check Baskets
+        if check_loaded_plugin(context, {'name':'basket'}):
+
+            try:
+                 # remove pkg from all baskets
+                baskets = toolkit.get_action('package_basket_list')(context, {'id': pkg_dict['id']})
+                for basket in baskets:
+                    toolkit.get_action('basket_element_remove')(context, {'basket_id': basket, 'package_id': pkg_dict['id']})
+            except:
+                pass
         try: # to purge
             if user and not user.sysadmin:
                 context['ignore_auth'] = True

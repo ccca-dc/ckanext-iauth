@@ -9,8 +9,11 @@ _get_or_bust = ckan.logic.get_or_bust
 
 def check_loaded_plugin(context,data_dict):
 
-    pluginname = _get_or_bust(data_dict, 'name')
-
+    try:
+        pluginname = _get_or_bust(data_dict, 'name')
+    except:
+        return False
+        
     #print "Hello Sunshine"
     ifaces = (eval('plugins.{}'.format(name)) for name in plugins.interfaces.__all__)
     implemented = [item.name
